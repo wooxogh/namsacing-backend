@@ -3,8 +3,22 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 from openai import OpenAI
+from prometheus_client import Histogram, Counter
+import time
 
 _client: Optional[OpenAI] = None  # 전역 캐시, 처음 호출 때만 생성
+
+LLM_LATENCY = Histogram(
+    "llm_latency_seconds",
+    "Latency of LLM API calls",
+    ["model", "status"]
+)
+
+LLM_CALL_TOTAL = Counter(
+    "llm_call_total",
+    "Total number of LLM calls",
+    ["status"]
+)
 
 def _get_client() -> OpenAI:
     global _client
@@ -27,9 +41,10 @@ class LLMResult:
     text: str
 
 def call_llm(system: str, user: str) -> LLMResult:
+    start_time = time.time()
     try:
-        client = _get_client()  # 여기서 최초 생성
-        rsp = client.chat.completions.create(   
+        client = _get_client()  # 최초 생성 또는 재사용
+        rsp = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": system},
@@ -38,7 +53,12 @@ def call_llm(system: str, user: str) -> LLMResult:
             temperature=0.2,
             response_format={"type": "json_object"},
         )
+        elapsed = time.time() - start_time
+        LLM_LATENCY.labels(model="gpt-4o", status="success").observe(elapsed)
+        LLM_CALL_TOTAL.labels(status="success").inc()
         return LLMResult(True, rsp.choices[0].message.content)
     except Exception as e:
+        elapsed = time.time() - start_time
+        LLM_LATENCY.labels(model="gpt-4o", status="error").observe(elapsed)
+        LLM_CALL_TOTAL.labels(status="error").inc()
         return LLMResult(False, f"ERROR: {e}")
-        
