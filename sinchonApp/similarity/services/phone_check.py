@@ -1,5 +1,7 @@
 import os
 import requests
+from prometheus_client import Histogram, Counter
+import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
 from django.utils import timezone
@@ -9,6 +11,18 @@ from similarity.utils.phone import normalize_kr_number
 APICK_BASE = os.getenv("APICK_BASE_URL", "https://apick.app")
 APICK_KEY  = os.getenv("APICK_API_KEY", "")
 APICK_TIMEOUT = float(os.getenv("APICK_TIMEOUT", "10"))
+
+PHONE_CHECK_LATENCY = Histogram(
+    "phone_check_latency_seconds",
+    "Latency of phone spam check (cache or external API)",
+    ["source"]
+)
+
+PHONE_CHECK_TOTAL = Counter(
+    "phone_check_total",
+    "Total number of phone spam checks",
+    ["source", "status"]
+)
 
 @dataclass
 class PhoneRisk:
@@ -38,12 +52,16 @@ def _parse_spam_count(raw: str) -> int:
         return int(digs) if digs else 0
 
 def check_spam_number(raw_number: str, use_cache: bool = True) -> PhoneRisk:
+    start_time = time.time()
     number = normalize_kr_number(raw_number)
 
     # 1) 캐시 조회
     if use_cache:
         row = PhoneCheck.objects.filter(number=number).first()
         if row:
+            elapsed = time.time() - start_time
+            PHONE_CHECK_LATENCY.labels(source="cache").observe(elapsed)
+            PHONE_CHECK_TOTAL.labels(source="cache", status="hit").inc()
             return PhoneRisk(
                 ok=bool(row.success == 1),
                 number=row.number,
@@ -57,6 +75,9 @@ def check_spam_number(raw_number: str, use_cache: bool = True) -> PhoneRisk:
 
     # 2) 외부 API 호출
     if not APICK_KEY:
+        elapsed = time.time() - start_time
+        PHONE_CHECK_LATENCY.labels(source="none").observe(elapsed)
+        PHONE_CHECK_TOTAL.labels(source="none", status="skip").inc()
         return PhoneRisk(False, number, None, 0, None, None, 0, "none")
 
     url = f"{APICK_BASE}/rest/check_spam_number"
@@ -77,6 +98,9 @@ def check_spam_number(raw_number: str, use_cache: bool = True) -> PhoneRisk:
                 last_checked_at=timezone.now(),
             )
         )
+        elapsed = time.time() - start_time
+        PHONE_CHECK_LATENCY.labels(source="api").observe(elapsed)
+        PHONE_CHECK_TOTAL.labels(source="api", status="error").inc()
         return PhoneRisk(False, number, None, 0, None, f"{e}", 0, "api")
 
     data = (j or {}).get("data") or {}
@@ -100,6 +124,10 @@ def check_spam_number(raw_number: str, use_cache: bool = True) -> PhoneRisk:
             last_checked_at=timezone.now(),
         )
     )
+
+    elapsed = time.time() - start_time
+    PHONE_CHECK_LATENCY.labels(source="api").observe(elapsed)
+    PHONE_CHECK_TOTAL.labels(source="api", status="success").inc()
 
     return PhoneRisk(
         ok=bool(success == 1),

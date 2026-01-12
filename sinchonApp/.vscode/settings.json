@@ -1,0 +1,9 @@
+{
+    "python.defaultInterpreterPath": "/Users/ehho/Desktop/남사칭/Backend/sinchonApp/venv/bin/python",
+    "python.analysis.extraPaths": [
+        "/Users/ehho/Desktop/남사칭/Backend/sinchonApp"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic"
+}
+
