@@ -1,5 +1,5 @@
 {
-  "ts": "2026-05-02T17:48:45",
+  "ts": "2026-05-02T17:35:41",
   "n_docs": 500,
   "mask_all": {
     "expected_pii": {
@@ -17,8 +17,8 @@
       "account": 0.0,
       "url": 0.0
     },
-    "throughput_chars_per_sec": 3388321,
-    "p50_us_per_doc": 12.83
+    "throughput_chars_per_sec": 9717775,
+    "p50_us_per_doc": 10.85
   },
   "compact_case_row_bug": {
     "input_keys": [
@@ -32,10 +32,10 @@
       "id": "42",
       "when": "2025-09-01T12:00:00",
       "title": "검찰청 사칭 사례",
-      "summary": "안녕하세요 서울중앙지검입니다. ***-****-5678 로 연락 주세요. scam.kr/…",
+      "summary": "",
       "like": 0
     },
-    "summary_is_empty": false,
+    "summary_is_empty": true,
     "like_defaulted_to_zero": true,
     "evidence": "compact_case_row reads row.get('body') and row.get('like_count') but db_search.fetch_candidates_mysql returns 'content' (not 'body') and never selects like_count. Result: LLM rerank receives an empty 'summary' field for every candidate."
   }

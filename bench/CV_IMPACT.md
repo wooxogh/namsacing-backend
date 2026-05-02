@@ -4,8 +4,8 @@
 
 | # | 현재 CV 문장 (요약) | 측정 결과 | 진위 | 권장 |
 |---|---------------------|-----------|------|------|
-| 1 | "MySQL FULLTEXT INDEX 와 최신순 정렬 Fallback 활용한 후보 검색 평균 ~90ms" | M1: 현재 production SQL 100% 에러 → 항상 fallback 만 실행. fallback p50 = **0.5ms @ N=10k, K=20**. corrected FULLTEXT p50 = **4.6ms**. CV 의 90ms 는 어느 경로에도 부합 안 함. | ❌ FALSE | **F1+F2 수정 필수.** 그 다음 측정값 기준으로 다시 적기: "FULLTEXT (ngram parser) 후보 검색 K=20 기준 p50 5ms / p99 12ms (10k rows, MySQL 8 단일 노드)" |
-| 2 | "후보 검색(K=50) → PII 마스킹 → K=20 Trim → LLM 재랭킹" 파이프라인 설계 | 구조는 정확. 하지만 F3 으로 PII 마스킹 단계의 입력이 항상 빈 문자열. 즉 LLM 은 제목 60자만 본다. | ⚠️ PARTIAL | F3 수정 후 그대로 유지. "본문에서 PII 마스킹 후 LLM 에 전달" 표현 가능. |
+| 1 | "MySQL FULLTEXT INDEX 와 최신순 정렬 Fallback 활용한 후보 검색 평균 ~90ms" | (BEFORE FIX) production SQL 100% 에러 → 항상 fallback p50 0.5ms 만 실행. (AFTER F1+F2) PROD fetch_candidates_mysql 가 실제 FULLTEXT 경로 실행, **p50 4.41ms (K=20) / 4.38ms (K=50) / 4.94ms (K=100) @ N=10k**, ngram parser. CV 의 90ms 는 어느 경로에도 부합 안 함. | ✅ FIXED | "FULLTEXT (ngram parser) 후보 검색 K=20 기준 **p50 4.4ms / p99 6.2ms** (10k rows, MySQL 8 단일 노드)" 로 갱신 |
+| 2 | "후보 검색(K=50) → PII 마스킹 → K=20 Trim → LLM 재랭킹" 파이프라인 설계 | (BEFORE F3) PII 마스킹 단계 입력 항상 빈 문자열, LLM 은 제목 60자만 봄. (AFTER F3) compact_case_row 가 'content' 키 읽도록 수정, M3 검증에서 summary_is_empty: false 확인 → 본문이 실제로 마스킹되어 LLM 에 전달됨. | ✅ FIXED | 그대로 유지. "본문에서 PII 마스킹 후 LLM 에 전달" 표현 정확. |
 | 3 | "GPT-4o 파싱 실패를 API 경계에서 차단" | M4 + 코드 리뷰: views.py:47-50 에서 `json.loads` 실패 시 502 반환 ✓ | ✅ TRUE | 그대로. |
 | 4 | "정규식 전화번호 추출 및 외부 API 결과 DB 캐싱 (캐시 히트 시 ~10ms)" | M2: cache hit p50 = **0.43ms**, p99 = 0.80ms. CV 의 ~10ms 는 보수적 추정. | ✅ TRUE (보수적) | "캐시 히트 시 sub-millisecond (p50 0.4ms)" 로 강화 가능. 또는 그대로 두고 면접에서 "측정해보니 더 빨랐다" 카드로 사용. |
 | 5 | "텍스트와 번호 신호를 55:45 가중치로 합산" | views.py:120 에서 `0.55 * sim_top + 0.45 * contact_freq` 확인 ✓ | ✅ TRUE | 그대로. |
@@ -18,8 +18,8 @@
 **현재:**
 > **[제약을 고려한 인프라 최적화]** 24시간 해커톤 제약을 고려, 구축 비용이 높은 Vector DB 대신 **MySQL FULLTEXT INDEX와 최신순 정렬 Fallback**을 활용한 후보 검색 구현. 평균 ~90ms 응답으로 추가 인프라 없이 정밀도 확보.
 
-**측정 후 권장 (F1+F2 수정 머지 후):**
-> **[제약을 고려한 인프라 최적화]** 해커톤 제약 하에 Vector DB 대신 **MySQL FULLTEXT INDEX (ngram parser) + 최신순 fallback** 의 2단 검색 채택. K=20 후보 추출 p50 **5ms** / p99 12ms (10k 게시글, 단일 노드, MySQL 8). 측정 스크립트와 결과는 `bench/` 디렉토리에서 재현 가능.
+**측정 후 권장 (F1+F2 수정 머지 완료):**
+> **[제약을 고려한 인프라 최적화]** 해커톤 제약 하에 Vector DB 대신 **MySQL FULLTEXT INDEX (ngram parser) + 최신순 fallback** 의 2단 검색 채택. K=20 후보 추출 **p50 4.4ms / p99 6.2ms** (10k 게시글, 단일 노드, MySQL 8, 100 iter). 측정 스크립트와 결과는 `bench/` 디렉토리에서 재현 가능.
 
 **왜 이 변경이 더 강한가:**
 - 구체적 수치 + 측정 조건 (N, K, 인프라) 명시 → 실측 신호

@@ -13,12 +13,40 @@ from tabulate import tabulate
 from config import RESULTS_DIR
 
 
-def load(name: str) -> dict | None:
-    path = os.path.join(RESULTS_DIR, name)
+def load(name: str, subdir: str = "") -> dict | None:
+    path = os.path.join(RESULTS_DIR, subdir, name) if subdir else os.path.join(RESULTS_DIR, name)
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+def diff_table(name: str, before: dict | None, after: dict | None,
+               extract: callable) -> list[str]:
+    """Generate a 'before vs after fix' comparison row.
+
+    extract(d: dict) → list[(label, p50_ms)] for that measurement.
+    Returns markdown table lines.
+    """
+    if not before and not after:
+        return []
+    rows_before = dict(extract(before)) if before else {}
+    rows_after  = dict(extract(after))  if after  else {}
+    keys = list({*rows_before, *rows_after})
+    rows = []
+    for k in keys:
+        b = rows_before.get(k, "—")
+        a = rows_after.get(k, "—")
+        delta = ""
+        if isinstance(b, (int, float)) and isinstance(a, (int, float)) and b > 0:
+            ratio = a / b
+            delta = f"×{ratio:.2f}" if ratio >= 1.0 else f"−{(1-ratio)*100:.0f}%"
+        rows.append([k, b, a, delta])
+    return [
+        f"### {name} — before vs after fix",
+        md_table(rows, ["scenario", "before (ms)", "after (ms)", "Δ"]),
+        "",
+    ]
 
 
 def md_table(rows, headers):
@@ -168,11 +196,66 @@ def main():
         "재현: `cd bench && docker compose up -d && python seed.py --reset && "
         "for s in measure_*.py; do python $s; done && python report.py`",
         "",
-        "**중요**: 이 측정은 production 코드를 변경하지 않은 상태에서 수행되었다. "
-        "발견된 결함은 별도 PR로 처리한다 (`bench/FINDINGS.md` 참고).",
+        "**before/after**: production 코드 fix 전후를 모두 보존한다. ",
+        "- `results/snapshot_before_fix/` — F1+F2+F3 fix 전 측정값 (silent bug 가 살아 있던 상태)",
+        "- `results/m{1..5}_*.json` — fix 후 측정값 (FULLTEXT 가 실제로 동작하는 상태)",
         "",
         "---",
     ]
+
+    # before vs after 요약 (가장 중요한 변화만)
+    before_m1 = load("m1_db_search.json", "snapshot_before_fix")
+    after_m1  = load("m1_db_search.json")
+
+    def extract_m1(d):
+        return [
+            ("PROD fetch_candidates_mysql K=20", d["path_PROD_fn"]["by_k"]["20"]["p50_ms"]),
+            ("PROD fetch_candidates_mysql K=50", d["path_PROD_fn"]["by_k"]["50"]["p50_ms"]),
+            ("PROD fetch_candidates_mysql K=100", d["path_PROD_fn"]["by_k"]["100"]["p50_ms"]),
+        ]
+
+    parts += ["## 핵심 변화 — fix 전후 비교", ""]
+    parts += diff_table("M1 fetch_candidates_mysql", before_m1, after_m1, extract_m1)
+
+    before_m3 = load("m3_pii.json", "snapshot_before_fix")
+    after_m3  = load("m3_pii.json")
+    if before_m3 and after_m3:
+        parts += [
+            "### M3 compact_case_row summary 채워짐 여부",
+            md_table([
+                ["summary 가 빈 문자열 (bug)",
+                 before_m3["compact_case_row_bug"]["summary_is_empty"],
+                 after_m3["compact_case_row_bug"]["summary_is_empty"]],
+            ], ["", "before fix", "after fix"]),
+            "",
+        ]
+
+    before_m4 = load("m4_pipeline.json", "snapshot_before_fix")
+    after_m4  = load("m4_pipeline.json")
+    if before_m4 and after_m4:
+        parts += [
+            "### M4 end-to-end (LLM mock) — 파이프라인 stage 비중",
+            md_table([
+                ["total p50 (ms)",
+                 before_m4["total_request"]["p50_ms"],
+                 after_m4["total_request"]["p50_ms"]],
+                ["db_search avg (ms)",
+                 before_m4["per_stage_avg_ms"].get("db_search", "—"),
+                 after_m4["per_stage_avg_ms"].get("db_search", "—")],
+                ["compact_pii avg (ms)",
+                 before_m4["per_stage_avg_ms"].get("compact_pii", "—"),
+                 after_m4["per_stage_avg_ms"].get("compact_pii", "—")],
+                ["phone_check avg (ms)",
+                 before_m4["per_stage_avg_ms"].get("phone_check", "—"),
+                 after_m4["per_stage_avg_ms"].get("phone_check", "—")],
+            ], ["metric", "before fix", "after fix"]),
+            "",
+            "> after fix 의 db_search/compact 가 더 무거워진 것은 'FULLTEXT 가 실제로 동작 + ",
+            "마스킹이 실제 본문에 적용' 되기 때문. 이전에는 둘 다 사실상 no-op 였음.",
+            "",
+        ]
+
+    parts += ["---", "## 상세 (after fix)", ""]
     for fn, sect in [
         ("m1_db_search.json",   section_m1),
         ("m2_phone_check.json", section_m2),

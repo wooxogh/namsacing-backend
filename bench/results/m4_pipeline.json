@@ -1,23 +1,23 @@
 {
-  "ts": "2026-05-02T17:35:41",
+  "ts": "2026-05-02T17:48:45",
   "iters": 100,
   "total_request": {
     "n": 100,
-    "min_ms": 1.36,
-    "p50_ms": 1.96,
-    "p90_ms": 2.18,
-    "p99_ms": 2.87,
-    "max_ms": 3.56,
-    "mean_ms": 1.9
+    "min_ms": 25.19,
+    "p50_ms": 34.64,
+    "p90_ms": 45.37,
+    "p99_ms": 49.23,
+    "max_ms": 60.11,
+    "mean_ms": 36.11
   },
   "per_stage_avg_ms": {
-    "db_search": 1.05,
-    "compact_pii": 0.14,
-    "phone_check": 0.47
+    "db_search": 32.9,
+    "compact_pii": 1.79,
+    "phone_check": 1.14
   },
   "per_stage_share_pct": {
-    "db_search": 55.1,
-    "compact_pii": 7.3,
-    "phone_check": 24.8
+    "db_search": 91.1,
+    "compact_pii": 5.0,
+    "phone_check": 3.2
   }
 }
