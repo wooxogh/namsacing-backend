@@ -1,0 +1,205 @@
+{
+  "ts": "2026-05-02T17:35:37",
+  "iters_per_k": 100,
+  "k_values": [
+    20,
+    50,
+    100
+  ],
+  "db_rows": 10000,
+  "path_A1_prod_fulltext": {
+    "name": "prod_fulltext_typo",
+    "sql": "SELECT id, category, title, content, created_at FROM wasscam_post WHERE category = %s ORDER BY MATCH(title, body) AGAINST (%s IN NATURAL LANGUAGE MODE) DESC, created_at DESC LIMIT %s",
+    "by_k": {
+      "20": {
+        "n": 100,
+        "min_ms": 0.12,
+        "p50_ms": 0.15,
+        "p90_ms": 0.19,
+        "p99_ms": 0.29,
+        "max_ms": 0.4,
+        "mean_ms": 0.15,
+        "stdev_ms": 0.04,
+        "rows_returned_avg": 0,
+        "first_error": "OperationalError: (1054, \"Unknown column 'body' in 'order clause'\")"
+      },
+      "50": {
+        "n": 100,
+        "min_ms": 0.11,
+        "p50_ms": 0.13,
+        "p90_ms": 0.18,
+        "p99_ms": 0.27,
+        "max_ms": 0.34,
+        "mean_ms": 0.14,
+        "stdev_ms": 0.03,
+        "rows_returned_avg": 0,
+        "first_error": "OperationalError: (1054, \"Unknown column 'body' in 'order clause'\")"
+      },
+      "100": {
+        "n": 100,
+        "min_ms": 0.11,
+        "p50_ms": 0.14,
+        "p90_ms": 0.19,
+        "p99_ms": 0.29,
+        "max_ms": 0.38,
+        "mean_ms": 0.15,
+        "stdev_ms": 0.04,
+        "rows_returned_avg": 0,
+        "first_error": "OperationalError: (1054, \"Unknown column 'body' in 'order clause'\")"
+      }
+    }
+  },
+  "path_A2_corrected_fulltext": {
+    "name": "corrected_fulltext",
+    "sql": "SELECT id, category, title, content, created_at FROM wasscam_post WHERE category = %s ORDER BY MATCH(title, content) AGAINST (%s IN NATURAL LANGUAGE MODE) DESC, created_at DESC LIMIT %s",
+    "by_k": {
+      "20": {
+        "n": 100,
+        "min_ms": 3.22,
+        "p50_ms": 4.62,
+        "p90_ms": 6.31,
+        "p99_ms": 11.57,
+        "max_ms": 13.39,
+        "mean_ms": 5.01,
+        "stdev_ms": 1.45,
+        "rows_returned_avg": 20,
+        "first_error": null
+      },
+      "50": {
+        "n": 100,
+        "min_ms": 3.53,
+        "p50_ms": 5.06,
+        "p90_ms": 6.63,
+        "p99_ms": 12.08,
+        "max_ms": 39.98,
+        "mean_ms": 5.71,
+        "stdev_ms": 3.73,
+        "rows_returned_avg": 50,
+        "first_error": null
+      },
+      "100": {
+        "n": 100,
+        "min_ms": 3.63,
+        "p50_ms": 5.42,
+        "p90_ms": 6.83,
+        "p99_ms": 7.22,
+        "max_ms": 7.66,
+        "mean_ms": 5.45,
+        "stdev_ms": 0.97,
+        "rows_returned_avg": 100,
+        "first_error": null
+      }
+    }
+  },
+  "path_B_fallback": {
+    "name": "fallback_recent",
+    "sql": "SELECT id, category, title, content, created_at FROM wasscam_post WHERE category = %s ORDER BY created_at DESC LIMIT %s",
+    "by_k": {
+      "20": {
+        "n": 100,
+        "min_ms": 0.35,
+        "p50_ms": 0.48,
+        "p90_ms": 0.77,
+        "p99_ms": 1.09,
+        "max_ms": 1.57,
+        "mean_ms": 0.54,
+        "stdev_ms": 0.17,
+        "rows_returned_avg": 20,
+        "first_error": null
+      },
+      "50": {
+        "n": 100,
+        "min_ms": 0.6,
+        "p50_ms": 0.75,
+        "p90_ms": 1.0,
+        "p99_ms": 1.67,
+        "max_ms": 1.7,
+        "mean_ms": 0.81,
+        "stdev_ms": 0.21,
+        "rows_returned_avg": 50,
+        "first_error": null
+      },
+      "100": {
+        "n": 100,
+        "min_ms": 0.9,
+        "p50_ms": 1.07,
+        "p90_ms": 1.21,
+        "p99_ms": 1.69,
+        "max_ms": 1.81,
+        "mean_ms": 1.09,
+        "stdev_ms": 0.14,
+        "rows_returned_avg": 100,
+        "first_error": null
+      }
+    }
+  },
+  "explain_corrected_fulltext": [
+    {
+      "id": 1,
+      "select_type": "SIMPLE",
+      "table": "wasscam_post",
+      "partitions": null,
+      "type": "ref",
+      "possible_keys": "idx_category_created",
+      "key": "idx_category_created",
+      "key_len": "82",
+      "ref": "const",
+      "rows": 1956,
+      "filtered": 100.0,
+      "Extra": "Using filesort"
+    }
+  ],
+  "explain_fallback": [
+    {
+      "id": 1,
+      "select_type": "SIMPLE",
+      "table": "wasscam_post",
+      "partitions": null,
+      "type": "ref",
+      "possible_keys": "idx_category_created",
+      "key": "idx_category_created",
+      "key_len": "82",
+      "ref": "const",
+      "rows": 1956,
+      "filtered": 100.0,
+      "Extra": "Backward index scan"
+    }
+  ],
+  "path_PROD_fn": {
+    "by_k": {
+      "20": {
+        "n": 100,
+        "min_ms": 0.56,
+        "p50_ms": 0.71,
+        "p90_ms": 0.76,
+        "p99_ms": 1.06,
+        "max_ms": 1.15,
+        "mean_ms": 0.72,
+        "stdev_ms": 0.09,
+        "rows_returned_avg": 20
+      },
+      "50": {
+        "n": 100,
+        "min_ms": 0.77,
+        "p50_ms": 0.91,
+        "p90_ms": 1.03,
+        "p99_ms": 1.44,
+        "max_ms": 1.55,
+        "mean_ms": 0.94,
+        "stdev_ms": 0.12,
+        "rows_returned_avg": 50
+      },
+      "100": {
+        "n": 100,
+        "min_ms": 1.08,
+        "p50_ms": 1.29,
+        "p90_ms": 1.63,
+        "p99_ms": 2.64,
+        "max_ms": 2.83,
+        "mean_ms": 1.37,
+        "stdev_ms": 0.3,
+        "rows_returned_avg": 100
+      }
+    }
+  }
+}
