@@ -1,0 +1,23 @@
+{
+  "ts": "2026-05-02T17:35:41",
+  "iters": 100,
+  "total_request": {
+    "n": 100,
+    "min_ms": 1.36,
+    "p50_ms": 1.96,
+    "p90_ms": 2.18,
+    "p99_ms": 2.87,
+    "max_ms": 3.56,
+    "mean_ms": 1.9
+  },
+  "per_stage_avg_ms": {
+    "db_search": 1.05,
+    "compact_pii": 0.14,
+    "phone_check": 0.47
+  },
+  "per_stage_share_pct": {
+    "db_search": 55.1,
+    "compact_pii": 7.3,
+    "phone_check": 24.8
+  }
+}
