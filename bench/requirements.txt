@@ -1,0 +1,15 @@
+PyMySQL==1.1.2
+faker==30.8.2
+tabulate==0.9.0
+# To import sinchonApp.similarity.services.* against bench MySQL we need Django
+# stack + prometheus_client (the latter is missing from sinchonApp/requirements.txt
+# entirely — see findings report).
+Django==5.2.5
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.7.0
+openai==1.106.1
+boto3==1.40.24
+prometheus-client==0.21.1
+python-dotenv==1.1.1
+requests==2.32.5

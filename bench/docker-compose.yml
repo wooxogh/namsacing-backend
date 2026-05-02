@@ -1,0 +1,27 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: namsacing-bench-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: benchpw
+      MYSQL_DATABASE: isScam_bench
+      MYSQL_USER: bench
+      MYSQL_PASSWORD: benchpw
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-ft-min-token-size=1
+      - --ngram-token-size=2
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pbenchpw"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - bench_mysql_data:/var/lib/mysql
+
+volumes:
+  bench_mysql_data:
