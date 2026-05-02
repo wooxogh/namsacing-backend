@@ -82,13 +82,13 @@ body = mask_all(row.get("body") or "")
 
 ---
 
-## F4. `prometheus_client` import error 로 부팅 자체 불가
+## F4. `prometheus_client` requirements 누락 — 부팅 시 ModuleNotFoundError
 
 ### 무엇이
 `db_search.py`, `db_read.py`, `phone_check.py`, `llm.py` 모두 module top-level 에서 `from prometheus_client import Histogram, Counter` 호출. 그러나 `requirements.txt` 에 `prometheus_client` 없음.
 
 ```
-$ grep prometheus sinchonApp/requirements.txt
+$ grep prometheus sinchonApp/requirements.txt   # before fix
 (no output)
 ```
 
@@ -96,17 +96,18 @@ $ grep prometheus sinchonApp/requirements.txt
 
 ### 증거
 - requirements.txt 전수 검사: 0 hits
-- `git log --oneline` 에서 `60b5969 [TEST] 성능 측정 프로메테우스 도입` (2026-01-12) 만 있음 — 의존성 추가 없이 import 만 추가됨
-- `urls.py` 어디에도 `/metrics` 엔드포인트 등록 없음 → 메트릭이 수집되어도 외부에서 scrape 불가
+- `git log --oneline` 에서 `60b5969 [TEST] 성능 측정 프로메테우스 도입` (2026-01-12) — Histogram/Counter import 만 추가됐고 dependency 는 같이 들어가지 않음
+
+### `/metrics` 엔드포인트는 등록되어 있음 (정정)
+초기 분석에서 "엔드포인트도 없음" 으로 적었으나, `sinchonApp/urls.py:line24` 에 `path("metrics/", metrics_view)` 가 이미 존재하고 `common/views.py` 에 `generate_latest()` 기반 view 가 정의되어 있다. dependency 만 추가하면 즉시 수집·노출 가능.
 
 ### 의미
 - 4개월간 메인 브랜치가 사실상 부팅 불가 상태로 방치됨 (해커톤 종료 후라 아무도 실행 안 함)
-- 수집되는 메트릭이 어디로도 노출되지 않는 dead code
+- dependency 추가만으로 기존 인프라 (Histogram 정의 + /metrics view) 가 살아남
 
-### 수정
+### 수정 (단일 라인)
 1. `requirements.txt` 에 `prometheus-client==0.21.1` 추가
-2. `urls.py` 에 `from prometheus_client import make_wsgi_app` 기반 `/metrics` 엔드포인트 등록 (또는 `django-prometheus` 채택)
-3. (선택) `MIDDLEWARE` 에 `django-prometheus` 추가하여 request-level 메트릭 자동 수집
+2. (선택) `MIDDLEWARE` 에 `django-prometheus` 추가하여 request-level 메트릭 자동 수집 — 별도 PR 권장
 
 ---
 
