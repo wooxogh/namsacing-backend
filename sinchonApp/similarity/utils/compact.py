@@ -7,10 +7,13 @@ def clip(s: str | None, n: int) -> str:
 
 def compact_case_row(row: dict) -> dict:
     """
-    row 예시: {"id": "...", "title": "...", "body": "...", "created_at": datetime|str|None, "like_count": 3}
-    PII 마스킹 후 3~4줄 카드 형태로 축약
+    row 예시: {"id": "...", "title": "...", "content"|"body": "...", "created_at": datetime|str|None, "like_count": 3}
+    PII 마스킹 후 3~4줄 카드 형태로 축약.
+
+    db_search.fetch_candidates_mysql 는 컬럼명을 'content' 로 반환하지만
+    legacy 호출자는 'body' 키를 넘길 수 있어 둘 다 받는다 (content 우선).
     """
-    body = mask_all(row.get("body") or "")
+    body = mask_all(row.get("content") or row.get("body") or "")
     body_line = " ".join(body.split())
 
     created = row.get("created_at")
