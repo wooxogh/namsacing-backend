@@ -167,6 +167,41 @@ def section_m4(d: dict) -> list[str]:
     return out
 
 
+def section_m6(d: dict) -> list[str]:
+    if not d:
+        return ["## M6: hit rate vs effective latency\n_no data_"]
+    out = [
+        "## M6: cache hit rate vs effective latency / apick 호출 절감",
+        f"- 시나리오: {d['n_warm']}개 알려진 번호 사전 적재, 각 요청은 hit_rate 확률로 알려진 번호 선택",
+        f"- mocked apick latency: **{d['apick_mock_latency_ms']}ms** (실제 외부 API 추정)",
+        f"- 요청 수 per level: **{d['n_requests_per_level']}**",
+        "",
+    ]
+    rows = []
+    for hr_str, m in sorted(d["by_hit_rate"].items(), key=lambda kv: float(kv[0])):
+        hr = float(hr_str)
+        rows.append([
+            f"{hr:.0%}",
+            m["p50_ms"], m["p90_ms"], m["p99_ms"], m["mean_ms"],
+            f"{m['apick_call_pct']}%",
+        ])
+    out.append(md_table(rows, [
+        "hit rate", "p50 (ms)", "p90 (ms)", "p99 (ms)", "mean (ms)", "apick 호출 비중",
+    ]))
+    out += [
+        "",
+        "**해석:**",
+        "- hit rate ≥ 50% 부터 p50 가 단일 ms 영역으로 진입 (≤ 3.5ms)",
+        "- p99 는 hit rate 95% 까지도 ~apick latency 와 비슷 — 한 건의 miss 가 tail 지배",
+        "- mean latency 는 (1−hit) × apick + hit × cache 로 거의 선형 감소",
+        "- apick 호출량은 (1−hit_rate) 와 정확히 일치 → 일 1k 요청에서 hit 80% 면 200회/day, hit 99% 면 10회/day",
+        "",
+        "**도메인 가정:** 사기 번호는 동일 번호로 다수 피해자 발생 → 시간 누적시 hit rate 우상향. ",
+        "초기에는 hit rate 낮아도 사용량 증가에 따라 자연스럽게 hit rate ≥ 80% 영역으로 수렴.",
+    ]
+    return out
+
+
 def section_m5(d: dict) -> list[str]:
     if not d:
         return ["## M5: scaling\n_no data_"]
@@ -262,6 +297,7 @@ def main():
         ("m3_pii.json",         section_m3),
         ("m4_pipeline.json",    section_m4),
         ("m5_scaling.json",     section_m5),
+        ("m6_hit_rate.json",    section_m6),
     ]:
         d = load(fn)
         parts += sect(d) + ["", "---", ""]

@@ -1,0 +1,104 @@
+{
+  "ts": "2026-05-02T18:03:25",
+  "n_warm": 100,
+  "n_requests_per_level": 500,
+  "apick_mock_latency_ms": 200.0,
+  "by_hit_rate": {
+    "0.00": {
+      "n": 500,
+      "min_ms": 205.44,
+      "p50_ms": 216.04,
+      "p90_ms": 220.49,
+      "p99_ms": 239.12,
+      "max_ms": 303.61,
+      "mean_ms": 216.73,
+      "actual_hit_rate": 0.0,
+      "apick_calls": 500,
+      "apick_call_pct": 100.0
+    },
+    "0.30": {
+      "n": 500,
+      "min_ms": 0.56,
+      "p50_ms": 214.56,
+      "p90_ms": 221.8,
+      "p99_ms": 250.95,
+      "max_ms": 320.35,
+      "mean_ms": 152.99,
+      "actual_hit_rate": 0.302,
+      "apick_calls": 349,
+      "apick_call_pct": 69.8
+    },
+    "0.50": {
+      "n": 500,
+      "min_ms": 0.5,
+      "p50_ms": 3.24,
+      "p90_ms": 220.05,
+      "p99_ms": 253.29,
+      "max_ms": 313.94,
+      "mean_ms": 103.36,
+      "actual_hit_rate": 0.532,
+      "apick_calls": 234,
+      "apick_call_pct": 46.8
+    },
+    "0.70": {
+      "n": 500,
+      "min_ms": 0.46,
+      "p50_ms": 1.7,
+      "p90_ms": 218.38,
+      "p99_ms": 247.38,
+      "max_ms": 362.23,
+      "mean_ms": 71.08,
+      "actual_hit_rate": 0.682,
+      "apick_calls": 159,
+      "apick_call_pct": 31.8
+    },
+    "0.80": {
+      "n": 500,
+      "min_ms": 0.59,
+      "p50_ms": 1.48,
+      "p90_ms": 214.67,
+      "p99_ms": 225.55,
+      "max_ms": 246.15,
+      "mean_ms": 47.74,
+      "actual_hit_rate": 0.784,
+      "apick_calls": 108,
+      "apick_call_pct": 21.6
+    },
+    "0.90": {
+      "n": 500,
+      "min_ms": 0.51,
+      "p50_ms": 1.24,
+      "p90_ms": 207.18,
+      "p99_ms": 216.84,
+      "max_ms": 233.21,
+      "mean_ms": 23.0,
+      "actual_hit_rate": 0.898,
+      "apick_calls": 51,
+      "apick_call_pct": 10.2
+    },
+    "0.95": {
+      "n": 500,
+      "min_ms": 0.4,
+      "p50_ms": 1.15,
+      "p90_ms": 1.99,
+      "p99_ms": 216.06,
+      "max_ms": 229.32,
+      "mean_ms": 12.73,
+      "actual_hit_rate": 0.946,
+      "apick_calls": 27,
+      "apick_call_pct": 5.4
+    },
+    "0.99": {
+      "n": 500,
+      "min_ms": 0.5,
+      "p50_ms": 1.05,
+      "p90_ms": 1.48,
+      "p99_ms": 3.2,
+      "max_ms": 216.7,
+      "mean_ms": 3.23,
+      "actual_hit_rate": 0.99,
+      "apick_calls": 5,
+      "apick_call_pct": 1.0
+    }
+  }
+}

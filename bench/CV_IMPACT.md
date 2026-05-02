@@ -7,7 +7,7 @@
 | 1 | "MySQL FULLTEXT INDEX 와 최신순 정렬 Fallback 활용한 후보 검색 평균 ~90ms" | (BEFORE FIX) production SQL 100% 에러 → 항상 fallback p50 0.5ms 만 실행. (AFTER F1+F2) PROD fetch_candidates_mysql 가 실제 FULLTEXT 경로 실행, **p50 4.41ms (K=20) / 4.38ms (K=50) / 4.94ms (K=100) @ N=10k**, ngram parser. CV 의 90ms 는 어느 경로에도 부합 안 함. | ✅ FIXED | "FULLTEXT (ngram parser) 후보 검색 K=20 기준 **p50 4.4ms / p99 6.2ms** (10k rows, MySQL 8 단일 노드)" 로 갱신 |
 | 2 | "후보 검색(K=50) → PII 마스킹 → K=20 Trim → LLM 재랭킹" 파이프라인 설계 | (BEFORE F3) PII 마스킹 단계 입력 항상 빈 문자열, LLM 은 제목 60자만 봄. (AFTER F3) compact_case_row 가 'content' 키 읽도록 수정, M3 검증에서 summary_is_empty: false 확인 → 본문이 실제로 마스킹되어 LLM 에 전달됨. | ✅ FIXED | 그대로 유지. "본문에서 PII 마스킹 후 LLM 에 전달" 표현 정확. |
 | 3 | "GPT-4o 파싱 실패를 API 경계에서 차단" | M4 + 코드 리뷰: views.py:47-50 에서 `json.loads` 실패 시 502 반환 ✓ | ✅ TRUE | 그대로. |
-| 4 | "정규식 전화번호 추출 및 외부 API 결과 DB 캐싱 (캐시 히트 시 ~10ms)" | M2: cache hit p50 = **0.43ms**, p99 = 0.80ms. CV 의 ~10ms 는 보수적 추정. | ✅ TRUE (보수적) | "캐시 히트 시 sub-millisecond (p50 0.4ms)" 로 강화 가능. 또는 그대로 두고 면접에서 "측정해보니 더 빨랐다" 카드로 사용. |
+| 4 | "정규식 전화번호 추출 및 외부 API 결과 DB 캐싱 (캐시 히트 시 ~10ms)" | M2: cache hit p50 = **0.43ms**, p99 = 0.80ms. M6: hit_rate 80% 시 effective mean **47.7ms** (vs 호출량 200ms × 5 절감), apick 호출 **80% 감소**. | ✅ TRUE (보수적) | "캐시 히트 sub-ms, hit rate 80% 시 외부 API 호출 5분의 1 감소 (M6 시뮬레이션)" 로 강화 가능 |
 | 5 | "텍스트와 번호 신호를 55:45 가중치로 합산" | views.py:120 에서 `0.55 * sim_top + 0.45 * contact_freq` 확인 ✓ | ✅ TRUE | 그대로. |
 | 6 | "독립 장애 격리 확보" (남사칭 아님 — GIFPT 섹션) | 본 측정 범위 밖. | — | — |
 
@@ -40,3 +40,6 @@
 
 **Q. "PII 마스킹은 왜 했나요?"**
 - 답변: "LLM 이 응답에 전화/계좌/URL 을 echo back 하면 사용자에게 다른 사람의 PII 가 노출됨. mask_all 함수로 K=20 후보 모두 정규식 마스킹 후 GPT-4o 에 전달. 측정상 1683건 PII 패턴에서 leak rate 0%. 마스킹 비용은 doc 당 11μs 라 무시 가능."
+
+**Q. "캐시에 데이터가 거의 없으면 무의미하지 않나요?"**
+- 답변: "도메인 특성상 사기 번호는 한 사용자가 아니라 같은 번호로 다수 피해자 발생. 한 명이 신고/조회하면 후속 요청은 전부 hit. M6 시뮬레이션 (200ms apick mock, 100 알려진 번호 사전 적재) 결과: hit rate 50% 시 mean 103ms, 80% 시 47ms, 95% 시 12ms 로 곡선이 가파르게 떨어집니다. 일 1k 요청 가정 시 hit 80% 면 apick 호출 200회/day 로 80% 절감. 시간 누적시 hit rate 가 자연스럽게 우상향하는 도메인이라 캐시가 가성비 매우 높습니다."

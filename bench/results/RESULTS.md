@@ -1,5 +1,5 @@
 # 남사칭-backend 성능 측정 결과
-_generated: 2026-05-02T17:50:15_
+_generated: 2026-05-02T18:09:10_
 
 전체 측정은 격리된 docker MySQL 8.0 (port 3307) + 합성 데이터에서 실행되었다.
 재현: `cd bench && docker compose up -d && python seed.py --reset && for s in measure_*.py; do python $s; done && python report.py`
@@ -14,9 +14,9 @@ _generated: 2026-05-02T17:50:15_
 ### M1 fetch_candidates_mysql — before vs after fix
 | scenario                          |   before (ms) |   after (ms) | Δ     |
 |-----------------------------------|---------------|--------------|-------|
-| PROD fetch_candidates_mysql K=20  |          0.71 |         4.41 | ×6.21 |
-| PROD fetch_candidates_mysql K=50  |          0.91 |         4.38 | ×4.81 |
 | PROD fetch_candidates_mysql K=100 |          1.29 |         4.94 | ×3.83 |
+| PROD fetch_candidates_mysql K=50  |          0.91 |         4.38 | ×4.81 |
+| PROD fetch_candidates_mysql K=20  |          0.71 |         4.41 | ×6.21 |
 
 ### M3 compact_case_row summary 채워짐 여부
 |                       | before fix   | after fix   |
@@ -122,5 +122,32 @@ _generated: 2026-05-02T17:50:15_
 |      10000 |       4.49 |       7.2  |        4.72 |
 
 > Production code currently always takes the fallback path (see M1). These numbers therefore measure `ORDER BY created_at DESC LIMIT K`.
+
+---
+
+## M6: cache hit rate vs effective latency / apick 호출 절감
+- 시나리오: 100개 알려진 번호 사전 적재, 각 요청은 hit_rate 확률로 알려진 번호 선택
+- mocked apick latency: **200.0ms** (실제 외부 API 추정)
+- 요청 수 per level: **500**
+
+| hit rate   |   p50 (ms) |   p90 (ms) |   p99 (ms) |   mean (ms) | apick 호출 비중   |
+|------------|------------|------------|------------|-------------|---------------|
+| 0%         |     216.04 |     220.49 |     239.12 |      216.73 | 100.0%        |
+| 30%        |     214.56 |     221.8  |     250.95 |      152.99 | 69.8%         |
+| 50%        |       3.24 |     220.05 |     253.29 |      103.36 | 46.8%         |
+| 70%        |       1.7  |     218.38 |     247.38 |       71.08 | 31.8%         |
+| 80%        |       1.48 |     214.67 |     225.55 |       47.74 | 21.6%         |
+| 90%        |       1.24 |     207.18 |     216.84 |       23    | 10.2%         |
+| 95%        |       1.15 |       1.99 |     216.06 |       12.73 | 5.4%          |
+| 99%        |       1.05 |       1.48 |       3.2  |        3.23 | 1.0%          |
+
+**해석:**
+- hit rate ≥ 50% 부터 p50 가 단일 ms 영역으로 진입 (≤ 3.5ms)
+- p99 는 hit rate 95% 까지도 ~apick latency 와 비슷 — 한 건의 miss 가 tail 지배
+- mean latency 는 (1−hit) × apick + hit × cache 로 거의 선형 감소
+- apick 호출량은 (1−hit_rate) 와 정확히 일치 → 일 1k 요청에서 hit 80% 면 200회/day, hit 99% 면 10회/day
+
+**도메인 가정:** 사기 번호는 동일 번호로 다수 피해자 발생 → 시간 누적시 hit rate 우상향. 
+초기에는 hit rate 낮아도 사용량 증가에 따라 자연스럽게 hit rate ≥ 80% 영역으로 수렴.
 
 ---
