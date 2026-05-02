@@ -16,7 +16,7 @@ DB_SEARCH_FALLBACK_TOTAL = Counter(
 
 def fetch_candidates_mysql(category: str, query_text: str, limit: int = 20):
     """
-    1순위: MySQL FULLTEXT(title, body) 점수로 상위 K개
+    1순위: MySQL FULLTEXT(title, content) 점수로 상위 K개
     2순위: FULLTEXT 미구성/오류 시 -> 최신순 LIMIT K (카테고리 필수)
     """
     q = (query_text or "").strip()
@@ -28,7 +28,7 @@ def fetch_candidates_mysql(category: str, query_text: str, limit: int = 20):
         SELECT id, category, title, content, created_at
         FROM wasscam_post
         WHERE category = %s
-        ORDER BY MATCH(title, body) AGAINST (%s IN NATURAL LANGUAGE MODE) DESC, created_at DESC
+        ORDER BY MATCH(title, content) AGAINST (%s IN NATURAL LANGUAGE MODE) DESC, created_at DESC
         LIMIT %s;
         """
         with connection.cursor() as cur:
